@@ -3,6 +3,7 @@ package nsq
 import (
 	"fmt"
 	"github.com/nsqio/go-nsq"
+	"time"
 )
 
 type Producer struct {
@@ -13,13 +14,21 @@ type Producer struct {
 // 初始化生产者
 func NewProducer(conf *Config) *Producer {
 	var err error
-	producer, err := nsq.NewProducer(conf.Address, nsq.NewConfig())
+	nsqconfig := nsq.NewConfig()
+	nsqconfig.DefaultRequeueDelay = 0
+	nsqconfig.MaxBackoffDuration = 20 * time.Millisecond
+	nsqconfig.LookupdPollInterval = 1000 * time.Millisecond
+	nsqconfig.RDYRedistributeInterval = 1000 * time.Millisecond
+	nsqconfig.MaxInFlight = 2500
+
+	mprod, err := nsq.NewProducer(conf.Address, nsqconfig)
+	fmt.Println(mprod)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return &Producer{
 		conf: conf,
-		prod: producer,
+		prod: mprod,
 	}
 }
 
@@ -33,7 +42,7 @@ func (p *Producer) Publish(message string) error {
 		err = p.prod.Publish(p.conf.Topic, []byte(message)) // 发布消息
 		return err
 	}
-	return fmt.Errorf("producer is nil", err)
+	return err
 }
 
 //

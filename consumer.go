@@ -12,9 +12,14 @@ type Consumer struct {
 
 //初始化消费者
 func NewConsumer(conf *Config) *Consumer {
-	cfg := nsq.NewConfig()
-	cfg.LookupdPollInterval = time.Second                    //设置重连时间
-	c, err := nsq.NewConsumer(conf.Topic, conf.Channel, cfg) // 新建一个消费者
+	nsqconfig := nsq.NewConfig()
+	nsqconfig.DefaultRequeueDelay = 0
+	nsqconfig.MaxBackoffDuration = 20 * time.Millisecond
+	nsqconfig.LookupdPollInterval = 1000 * time.Millisecond
+	nsqconfig.RDYRedistributeInterval = 1000 * time.Millisecond
+	nsqconfig.MaxInFlight = 2500
+
+	c, err := nsq.NewConsumer(conf.Topic, conf.Channel, nsqconfig) // 新建一个消费者
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +37,7 @@ func (cs *Consumer) Handler(handler nsq.Handler) {
 func (cs *Consumer) Run() error {
 	if cs.cons != nil {
 		//建立NSQLookupd连接
-		if err := cs.cons.ConnectToNSQLookupd(cs.conf.Address); err != nil {
+		if err := cs.cons.ConnectToNSQD(cs.conf.Address); err != nil {
 			return err
 		}
 	}
